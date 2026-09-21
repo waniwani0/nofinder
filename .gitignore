@@ -1,0 +1,7 @@
+cert.pem
+key.pem
+.cert-hosts
+.cert-ip
+.DS_Store
+__pycache__/
+*.pyc
