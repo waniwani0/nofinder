@@ -95,14 +95,6 @@
     padding:4.2% 5.5% 5%;box-sizing:border-box;
     display:flex;flex-direction:column;gap:2.4cqw;
   }
-  .lamp{display:flex;align-items:center;gap:1cqw;font-family:var(--mono);
-    font-size:1.2cqw;letter-spacing:.22em;color:var(--ink-dim);padding-bottom:.4cqw}
-  .lamp i{width:.9cqw;height:.9cqw;border-radius:999px;background:var(--film);
-    display:block;animation:beat 2.6s infinite}
-  .lamp.off i{background:#3C3C3C;animation:none}
-  .lamp.test i{background:var(--brass)}
-  @keyframes beat{0%,62%,100%{opacity:.34}72%{opacity:1}}
-
   .notice{display:flex;align-items:center;gap:2.4cqw;flex-wrap:wrap}
   .notice p{margin:0;font-size:1.75cqw;line-height:1.8;color:var(--ink-dim);max-width:46cqw}
   .notice p b{color:var(--brass);font-weight:500}
@@ -114,7 +106,11 @@
     display:inline-flex;align-items:center;gap:.9cqw;
     transition:border-color .15s ease,color .15s ease;
   }
-  .ctl b{font-family:var(--mono);font-weight:500;color:var(--ink-dim)}
+  /* the stock name changes, the button must not: reserve the widest label */
+  .ctl b{
+    font-family:var(--mono);font-weight:500;color:var(--ink-dim);
+    display:inline-block;min-width:4.6em;text-align:center;
+  }
   .ctl:active{border-color:var(--ink);}
   .ctl[aria-pressed="false"]{color:var(--ink-dim)}
   .ctl[aria-pressed="false"] b{text-decoration:line-through}
@@ -150,15 +146,18 @@
     border:1px solid var(--rule);border-radius:1px;padding:7px 13px}
   .bar-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
   #galSave,#vSave{color:var(--brass);border-color:rgba(169,136,74,.5)}
+  #galDelete{color:var(--film);border-color:rgba(150,64,46,.5)}
+  .close[disabled]{opacity:.3;cursor:default}
 
-  .roll-label{
-    display:flex;align-items:center;gap:10px;margin:20px 0 9px;
-    font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;color:var(--ink-dim);
-  }
-  .roll-label:first-child{margin-top:0}
-  .roll-label hr{flex:1;border:0;border-top:1px solid var(--rule);margin:0}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:5px}
-  .grid button{aspect-ratio:1;overflow:hidden;background:#000;border:1px solid var(--rule)}
+  .grid button{position:relative;aspect-ratio:1;overflow:hidden;background:#000;
+    border:1px solid var(--rule)}
+  .grid button.sel{border-color:var(--brass)}
+  .grid button.sel img{opacity:.55}
+  .grid button.sel::after{
+    content:"";position:absolute;right:6px;top:6px;width:14px;height:14px;
+    border-radius:999px;background:var(--brass);
+  }
   .grid img{width:100%;height:100%;object-fit:cover;display:block}
   .empty{color:var(--ink-dim);font-size:12.5px;line-height:2;text-align:center;padding:40px 0}
 
@@ -174,6 +173,21 @@
   .trash{color:var(--film);font-size:11px;letter-spacing:.1em;
     border:1px solid rgba(150,64,46,.5);border-radius:1px;padding:7px 13px}
   .btn-line{border-color:var(--brass);color:var(--brass)}
+
+  .ask{
+    position:fixed;inset:0;z-index:45;background:rgba(6,6,6,.82);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    box-sizing:border-box;
+  }
+  .ask-box{
+    background:var(--door);border:1px solid var(--rule);border-radius:1px;
+    padding:22px 24px;max-width:340px;width:100%;
+    display:flex;flex-direction:column;gap:18px;
+  }
+  .ask-box p{margin:0;font-size:13.5px;line-height:1.8;color:var(--ink)}
+  .ask-acts{display:flex;gap:8px;justify-content:flex-end}
+  #askYes{color:var(--brass);border-color:rgba(169,136,74,.5)}
+  #askYes.danger{color:var(--film);border-color:rgba(150,64,46,.5)}
 
   #toast{
     position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));
@@ -204,15 +218,13 @@
     </button>
 
     <div class="door">
-      <div class="lamp" id="lamp"><i></i><span id="lampText">起動中</span></div>
-
       <div class="notice" id="notice" hidden>
         <p id="noticeMsg"></p>
-        <button type="button" class="btn-line ctl" id="retry">カメラを再試行</button>
+        <button type="button" class="btn-line ctl" id="retry">再試行</button>
       </div>
 
       <div class="controls">
-        <button type="button" class="ctl" id="lookBtn">フィルム <b id="lookLabel">カラーネガ</b></button>
+        <button type="button" class="ctl" id="lookBtn">フィルム <b id="lookLabel">期限切れ</b></button>
         <button type="button" class="ctl" id="openRoll">現像する</button>
       </div>
     </div>
@@ -228,13 +240,13 @@
 
 <div class="sheet" id="gallery" hidden>
   <div class="sheet-bar">
-    <div>
-      <h2>裏ぶたの中</h2>
-      <div class="sub" id="galCount">0 frames</div>
-    </div>
+    <h2>撮った写真</h2>
     <div class="bar-acts">
-      <button type="button" class="close" id="galSave">写真アプリに保存</button>
-      <button type="button" class="close" id="galClose">ふたを閉じる</button>
+      <button type="button" class="close" id="galSelect">選択</button>
+      <button type="button" class="close" id="galClose">閉じる</button>
+      <button type="button" class="close" id="galSave" hidden>保存</button>
+      <button type="button" class="close" id="galDelete" hidden>削除</button>
+      <button type="button" class="close" id="galCancel" hidden>やめる</button>
     </div>
   </div>
   <div class="sheet-body" id="galBody"></div>
@@ -258,6 +270,16 @@
   </div>
 </div>
 
+<div class="ask" id="ask" hidden>
+  <div class="ask-box">
+    <p id="askText"></p>
+    <div class="ask-acts">
+      <button type="button" class="close" id="askNo">やめる</button>
+      <button type="button" class="close" id="askYes">保存</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" role="status"></div>
 
 <script>
@@ -266,8 +288,6 @@
   var $ = function(s){ return document.querySelector(s); };
 
   var video   = $("#cam"),
-      lampEl  = $("#lamp"),
-      lampTxt = $("#lampText"),
       notice  = $("#notice"),
       demoCv  = $("#demo"),
       shutter = $("#shutter"),
@@ -276,7 +296,7 @@
   var canvas = document.createElement("canvas");
   var ctx = canvas.getContext("2d");
 
-  var state = { roll:1, look:"color" };
+  var state = { roll:1, look:"faded" };
   var facing = "environment";   /* the one lens this body has */
   var stream = null, ready = false, busy = false;
   var demo = false, demoTimer = null, noticeOn = false;
@@ -348,21 +368,20 @@
      moment of exposure, the way the emulsion would: tone curve, colour cast,
      halation around the highlights, grain, and corner falloff. */
   var LOOKS = [
-    { id:"color", name:"カラーネガ",
-      sat:0.86, contrast:0.34, fade:0.055,
-      gamma:[0.98,1.00,1.04], gain:[1.03,1.00,0.97], lift:[0.012,0.014,0.030],
-      grain:13, vignette:0.30,
-      halation:{ amount:0.34, threshold:0.72, tint:[1.00,0.42,0.22] } },
+    { id:"faded", name:"期限切れ",
+      /* measured off a real expired roll: shadows run crimson, midtones go
+         yellow, the brightest areas turn cyan, and the corners bleed red. */
+      sat:1.05, contrast:0.30, fade:0.110,
+      gamma:[1.00,1.00,1.00], gain:[1.00,1.00,1.00], lift:[0,0,0],
+      split:{ r:[0.24,0.13,-0.16], g:[-0.07,-0.04,0.06], b:[-0.04,-0.06,0.02] },
+      grain:15, vignette:0.55, vigR:0.45,
+      halation:{ amount:0.60, threshold:0.58, tint:[1.00,0.72,0.45] },
+      leak:{ amount:0.30, tint:[255,55,70] } },
     { id:"mono", name:"モノクロ",
       sat:0.00, contrast:0.46, fade:0.040,
       gamma:[1.00,1.00,1.00], gain:[1.00,1.00,1.00], lift:[0.020,0.019,0.017],
       grain:21, vignette:0.34,
       halation:{ amount:0.22, threshold:0.76, tint:[1.00,1.00,1.00] } },
-    { id:"faded", name:"期限切れ",
-      sat:0.62, contrast:0.16, fade:0.140,
-      gamma:[0.94,1.02,1.08], gain:[1.06,0.97,1.02], lift:[0.050,0.030,0.055],
-      grain:17, vignette:0.42,
-      halation:{ amount:0.46, threshold:0.62, tint:[1.00,0.55,0.30] } },
     { id:"raw", name:"そのまま", raw:true }
   ];
   var LONG_EDGE = 1600;   /* a compact film camera does not resolve more */
@@ -388,6 +407,32 @@
       }
     }
     return lut;
+  }
+
+  /* Light striking the emulsion through a worn seal. Placed at random on each
+     exposure, the way a leaking camera never repeats itself. */
+  function drawLeak(cv, g, leak){
+    var W = cv.width, H = cv.height;
+    var n = 1 + (Math.random() * 1.7 | 0);      /* one, sometimes two */
+    var col = leak.tint.join(",");
+    g.save();
+    g.globalCompositeOperation = "screen";
+    for(var i = 0; i < n; i++){
+      var pick = Math.random(), x, y;
+      if(pick < 0.34){ x = Math.random() < 0.5 ? 0 : W; y = Math.random() * H; }
+      else if(pick < 0.62){ x = Math.random() * W; y = Math.random() < 0.5 ? 0 : H; }
+      else { x = Math.random() < 0.5 ? 0 : W; y = Math.random() < 0.5 ? 0 : H; }
+      var rad = H * (0.22 + Math.random() * 0.26);   /* stays near its edge */
+      var a = leak.amount * (0.45 + Math.random() * 0.65);
+      var grd = g.createRadialGradient(x, y, 0, x, y, rad);
+      grd.addColorStop(0,    "rgba(" + col + "," + a.toFixed(3) + ")");
+      grd.addColorStop(0.30, "rgba(" + col + "," + (a * 0.28).toFixed(3) + ")");
+      grd.addColorStop(0.65, "rgba(" + col + "," + (a * 0.06).toFixed(3) + ")");
+      grd.addColorStop(1,    "rgba(" + col + ",0)");
+      g.fillStyle = grd;
+      g.fillRect(0, 0, W, H);
+    }
+    g.restore();
   }
 
   function develop(cv, g, look){
@@ -423,10 +468,22 @@
       g.restore();
     }
 
+    if(look.leak && look.leak.amount > 0) drawLeak(cv, g, look.leak);
+
     /* one pass for grade, grain and falloff */
     var img = g.getImageData(0, 0, W, H), p = img.data;
     var lut = buildLUT(look), lr = lut[0], lg = lut[1], lb = lut[2];
     var sat = look.sat, grain = look.grain, vig = look.vignette;
+    var vigR = look.vigR || 1;            /* red keeps more of its light */
+    /* three anchors — shadow, midtone, highlight — blended as a quadratic,
+       so the cast can reverse on the way up instead of sliding evenly */
+    var sp = look.split;
+    var R0=0,R1=0,R2=0, G0=0,G1=0,G2=0, B0=0,B1=0,B2=0;
+    if(sp){
+      R0=sp.r[0]*255; R1=sp.r[1]*255; R2=sp.r[2]*255;
+      G0=sp.g[0]*255; G1=sp.g[1]*255; G2=sp.g[2]*255;
+      B0=sp.b[0]*255; B1=sp.b[1]*255; B2=sp.b[2]*255;
+    }
     var cx = W / 2, cy = H / 2, maxd = cx * cx + cy * cy;
     var n = (Math.random() * NOISE.length) | 0;
     var idx = 0;
@@ -439,6 +496,13 @@
         r  = lr[r  < 0 ? 0 : r  > 255 ? 255 : r  | 0];
         gr = lg[gr < 0 ? 0 : gr > 255 ? 255 : gr | 0];
         b  = lb[b  < 0 ? 0 : b  > 255 ? 255 : b  | 0];
+        if(sp){
+          var t = (r * 0.2126 + gr * 0.7152 + b * 0.0722) / 255, u = 1 - t;
+          var w0 = u * u, w1 = 2 * t * u, w2 = t * t;
+          r  += R0 * w0 + R1 * w1 + R2 * w2;
+          gr += G0 * w0 + G1 * w1 + G2 * w2;
+          b  += B0 * w0 + B1 * w1 + B2 * w2;
+        }
         if(grain){
           /* grain sits heaviest in the midtones, as it does on film */
           var q = NOISE[(n++) & 8191] * grain * (1 - Math.abs(lum / 255 - 0.45) * 1.2);
@@ -446,8 +510,9 @@
         }
         if(vig){
           var dx = x - cx;
-          var f = 1 - vig * ((dx * dx + dy2) / maxd);
-          r *= f; gr *= f; b *= f;
+          var d2 = (dx * dx + dy2) / maxd;
+          var f = 1 - vig * d2;
+          r *= 1 - vig * vigR * d2; gr *= f; b *= f;
         }
         p[idx] = r; p[idx+1] = gr; p[idx+2] = b;
       }
@@ -592,9 +657,6 @@
     ready = true;
     video.hidden = true;
     demoCv.hidden = false;
-    lampEl.classList.remove("off");
-    lampEl.classList.add("test");
-    lampTxt.textContent = "TEST SIGNAL";
     renderShutter();
     demoFrame();
   }
@@ -604,7 +666,6 @@
     clearTimeout(demoTimer);
     demoCv.hidden = true;
     video.hidden = false;
-    lampEl.classList.remove("test");
   }
 
   function showNotice(html){
@@ -634,8 +695,6 @@
   }
   function start(){
     ready = false;
-    lampEl.classList.add("off");
-    lampTxt.textContent = "起動中";
     renderShutter();
     stopStream();
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
@@ -654,23 +713,12 @@
       stopDemo();
       clearNotice();
       ready = true;
-      lampEl.classList.remove("off");
-      lampTxt.textContent = "FILM LOADED";
       renderShutter();
     }).catch(function(err){
       var name = err && err.name || "";
-      var why;
-      if(name === "NotAllowedError" || name === "SecurityError"){
-        why = "カメラが許可されていません。";
-      }else if(name === "NotFoundError" || name === "OverconstrainedError"){
-        why = "カメラが見つかりません。";
-      }else if(window.self !== window.top){
-        why = "埋め込み表示ではカメラを使えません。";
-      }else{
-        why = "カメラを起動できませんでした。";
-      }
-      showNotice(why + " <b>テスト信号</b>に切り替えました。" +
-                 "シャッターはそのまま動くので、ここで操作を確かめられます。");
+      showNotice(name === "NotFoundError" || name === "OverconstrainedError"
+        ? "カメラが見つかりません。"
+        : "カメラが許可されていません。設定をやり直してください。");
       startDemo();
     });
   }
@@ -770,49 +818,76 @@
     return d.getFullYear() + "." + p(d.getMonth()+1) + "." + p(d.getDate()) + "  " + p(d.getHours()) + ":" + p(d.getMinutes());
   }
   var shots = [];
+  var selecting = false;
+  var picked = {};
+
+  var askAction = null;
+  function ask(text, label, danger, fn){
+    $("#askText").textContent = text;
+    $("#askYes").textContent = label;
+    $("#askYes").classList.toggle("danger", !!danger);
+    askAction = fn;
+    $("#ask").hidden = false;
+  }
+  function closeAsk(){
+    $("#ask").hidden = true;
+    askAction = null;
+  }
+
+  function chosen(){
+    return shots.filter(function(s){ return picked[s.id]; });
+  }
+
+  function setSelecting(on){
+    selecting = on;
+    picked = {};
+    var marks = document.querySelectorAll(".grid button.sel");
+    for(var i = 0; i < marks.length; i++){ marks[i].classList.remove("sel"); }
+    $("#galSelect").hidden = on || !shots.length;
+    $("#galClose").hidden = on;
+    $("#galSave").hidden = !on;
+    $("#galDelete").hidden = !on;
+    $("#galCancel").hidden = !on;
+    renderPicked();
+  }
+  function renderPicked(){
+    var n = chosen().length;
+    $("#galSave").disabled = !n;
+    $("#galDelete").disabled = !n;
+  }
+
   function openGallery(){
     return Store.all().then(function(list){
       shots = list.sort(function(a,b){ return a.id - b.id; });
       var body = $("#galBody");
       body.innerHTML = "";
-      $("#galCount").textContent = shots.length + " frames";
       if(!shots.length){
         var e = document.createElement("p");
         e.className = "empty";
         e.innerHTML = "まだ1枚も撮っていません。<br>右上のレリーズボタンを押してみてください。";
         body.appendChild(e);
       }else{
-        var rolls = [];
-        shots.forEach(function(s){ if(rolls.indexOf(s.roll) < 0) rolls.push(s.roll); });
-        rolls.sort(function(a,b){ return b - a; });
-        rolls.forEach(function(r){
-          var lab = document.createElement("div");
-          lab.className = "roll-label";
-          var t = document.createElement("span");
-          t.textContent = "ROLL " + String(r).padStart(2,"0");
-          lab.appendChild(t);
-          lab.appendChild(document.createElement("hr"));
-          var n = document.createElement("span");
-          n.textContent = shots.filter(function(s){ return s.roll === r; }).length + "枚";
-          lab.appendChild(n);
-          body.appendChild(lab);
-
-          var grid = document.createElement("div");
-          grid.className = "grid";
-          shots.filter(function(s){ return s.roll === r; }).forEach(function(s){
-            var b = document.createElement("button");
-            b.type = "button";
-            var img = document.createElement("img");
-            img.src = s.data;
-            img.alt = fmt(s.ts) + " の写真";
-            img.loading = "lazy";
-            b.appendChild(img);
-            b.addEventListener("click", function(){ openViewer(s); });
-            grid.appendChild(b);
+        var grid = document.createElement("div");
+        grid.className = "grid";
+        shots.forEach(function(s){
+          var b = document.createElement("button");
+          b.type = "button";
+          var img = document.createElement("img");
+          img.src = s.data;
+          img.alt = fmt(s.ts) + " の写真";
+          img.loading = "lazy";
+          b.appendChild(img);
+          b.addEventListener("click", function(){
+            if(!selecting){ openViewer(s); return; }
+            if(picked[s.id]){ delete picked[s.id]; b.classList.remove("sel"); }
+            else { picked[s.id] = true; b.classList.add("sel"); }
+            renderPicked();
           });
-          body.appendChild(grid);
+          grid.appendChild(b);
         });
+        body.appendChild(grid);
       }
+      setSelecting(false);
       $("#gallery").hidden = false;
     });
   }
@@ -821,10 +896,9 @@
     current = s;
     $("#vImg").src = s.data;
     $("#vDate").textContent = fmt(s.ts);
-    var lens = s.facing === "demo" ? "テスト信号" : "背面";
     var stock = "";
-    for(var i = 0; i < LOOKS.length; i++){ if(LOOKS[i].id === s.look) stock = " · " + LOOKS[i].name; }
-    $("#vRoll").textContent = "ROLL " + String(s.roll).padStart(2,"0") + " · " + lens + stock;
+    for(var i = 0; i < LOOKS.length; i++){ if(LOOKS[i].id === s.look) stock = LOOKS[i].name; }
+    $("#vRoll").textContent = stock;
     $("#viewer").hidden = false;
     $("#viewer .sheet-body").scrollTop = 0;
   }
@@ -849,9 +923,43 @@
 
   $("#retry").addEventListener("click", start);
   $("#openRoll").addEventListener("click", openGallery);
+  $("#askNo").addEventListener("click", closeAsk);
+  $("#ask").addEventListener("click", function(e){
+    if(e.target === $("#ask")) closeAsk();
+  });
+  $("#askYes").addEventListener("click", function(){
+    var fn = askAction;
+    closeAsk();
+    if(fn) fn();           /* still inside the tap, so the share sheet opens */
+  });
+
+  $("#galSelect").addEventListener("click", function(){ setSelecting(true); });
+  $("#galCancel").addEventListener("click", function(){ setSelecting(false); });
+
   $("#galSave").addEventListener("click", function(){
-    if(!shots.length){ toast("まだ1枚も撮っていません"); return; }
-    share(shots);
+    var picked = chosen();
+    if(!picked.length) return;
+    ask(picked.length + "枚を保存しますか？", "保存", false, function(){
+      share(picked);
+      setSelecting(false);
+    });
+  });
+
+  $("#galDelete").addEventListener("click", function(){
+    var picked = chosen();
+    if(!picked.length) return;
+    ask(picked.length + "枚を削除しますか？元に戻せません。", "削除", true, function(){
+      var chain = Promise.resolve();
+      picked.forEach(function(sh){
+        chain = chain.then(function(){ return Store.del(sh.id); });
+      });
+      chain.then(function(){
+        setSelecting(false);
+        return openGallery();
+      }).then(function(){
+        toast(picked.length + "枚を削除しました");
+      });
+    });
   });
   $("#vSave").addEventListener("click", function(){
     if(current) share([current]);
@@ -860,11 +968,12 @@
   $("#vClose").addEventListener("click", function(){ $("#viewer").hidden = true; });
   $("#vDel").addEventListener("click", function(){
     if(!current) return;
-    if(!confirm("この1枚を消します。元に戻せません。")) return;
-    var id = current.id, roll = current.roll;
-    Store.del(id).then(function(){
-      $("#viewer").hidden = true;
-      openGallery();
+    var one = current;
+    ask("この1枚を削除しますか？元に戻せません。", "削除", true, function(){
+      Store.del(one.id).then(function(){
+        $("#viewer").hidden = true;
+        openGallery();
+      });
     });
   });
 
@@ -889,7 +998,12 @@
     db = d;
     return Store.loadMeta();
   }).then(function(meta){
-    if(meta){ state.roll = meta.roll || 1; state.look = meta.look || "color"; }
+    if(meta){
+      state.roll = meta.roll || 1;
+      var saved = meta.look, known = false;
+      for(var i = 0; i < LOOKS.length; i++){ if(LOOKS[i].id === saved) known = true; }
+      state.look = known ? saved : "faded";
+    }
   }).catch(function(){}).then(function(){
     renderShutter();
     renderLook();
