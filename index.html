@@ -109,7 +109,7 @@
   /* the stock name changes, the button must not: reserve the widest label */
   .ctl b{
     font-family:var(--mono);font-weight:500;color:var(--ink-dim);
-    display:inline-block;min-width:4.6em;text-align:center;
+    display:inline-block;min-width:5.6em;text-align:center;
   }
   .ctl:active{border-color:var(--ink);}
   .ctl[aria-pressed="false"]{color:var(--ink-dim)}
@@ -377,13 +377,30 @@
       grain:15, vignette:0.55, vigR:0.62,
       halation:{ amount:0.60, threshold:0.58, tint:[1.00,0.78,0.55] },
       leak:{ amount:0.30, tint:[255,55,70] },
-      cool:{ amount:0.50, tint:[70,140,235], chance:0.8 } },
+      cool:{ amount:0.50, tint:[70,140,235], chance:0.8 },
+      fog:{ amount:0.32, tint:[255,248,238], chance:0.85 } },
     { id:"mono", name:"モノクロ",
       sat:0.00, contrast:0.46, fade:0.040,
       gamma:[1.00,1.00,1.00], gain:[1.00,1.00,1.00], lift:[0.020,0.019,0.017],
       grain:21, vignette:0.34,
       halation:{ amount:0.22, threshold:0.76, tint:[1.00,1.00,1.00] } },
-    { id:"raw", name:"ノーマル",
+    { id:"blue", name:"夜明け",
+      /* a stock balanced for tungsten light, used in daylight: everything
+         sinks blue, and only the very top of the scale keeps any warmth. */
+      sat:0.90, contrast:0.26, fade:0.120,
+      gamma:[1.00,1.00,1.00], gain:[1.00,1.00,1.00], lift:[0,0,0],
+      split:{ r:[-0.10,-0.06,0.02], g:[-0.01,0.00,0.03], b:[0.12,0.07,0.04] },
+      grain:12, vignette:0.30, vigR:1,
+      halation:{ amount:0.35, threshold:0.68, tint:[0.75,0.88,1.00] } },
+    { id:"warm", name:"夕暮れ",
+      /* the other half of the day: light low and long, everything running
+         gold, the blue pulled out of it from the shadows up. */
+      sat:0.95, contrast:0.26, fade:0.110,
+      gamma:[1.00,1.00,1.00], gain:[1.00,1.00,1.00], lift:[0,0,0],
+      split:{ r:[0.10,0.07,0.03], g:[0.01,0.02,0.01], b:[-0.10,-0.08,-0.05] },
+      grain:12, vignette:0.30, vigR:0.80,
+      halation:{ amount:0.42, threshold:0.64, tint:[1.00,0.80,0.48] } },
+    { id:"raw", name:"オリジナル",
       /* the quiet one: blacks lifted so they read as soft grey, colour pulled
          back to pastel, a warm cream in the highlights. Barely any grain. */
       sat:0.82, contrast:0.12, fade:0.180,
@@ -472,6 +489,29 @@
     g.restore();
   }
 
+  /* Base fog: the emulsion gained density on its own while the roll sat in a
+     drawer. It veils rather than lights, so it flattens whatever is under it. */
+  function drawFog(cv, g, fog){
+    if(Math.random() > (fog.chance || 1)) return;
+    var W = cv.width, H = cv.height;
+    var n = 1 + (Math.random() * 1.7 | 0);
+    var col = fog.tint.join(",");
+    g.save();
+    for(var i = 0; i < n; i++){
+      var a = fog.amount * (0.5 + Math.random() * 0.75);
+      var x = Math.random() * W, y = Math.random() * H;
+      var rad = H * (0.26 + Math.random() * 0.36);
+      var grd = g.createRadialGradient(x, y, 0, x, y, rad);
+      grd.addColorStop(0,    "rgba(" + col + "," + a.toFixed(3) + ")");
+      grd.addColorStop(0.40, "rgba(" + col + "," + (a * 0.45).toFixed(3) + ")");
+      grd.addColorStop(0.75, "rgba(" + col + "," + (a * 0.10).toFixed(3) + ")");
+      grd.addColorStop(1,    "rgba(" + col + ",0)");
+      g.fillStyle = grd;
+      g.fillRect(0, 0, W, H);
+    }
+    g.restore();
+  }
+
   function develop(cv, g, look){
     if(!look || look.raw) return;
     var W = cv.width, H = cv.height;
@@ -507,6 +547,7 @@
 
     if(look.leak && look.leak.amount > 0) drawLeak(cv, g, look.leak);
     if(look.cool && look.cool.amount > 0) drawCool(cv, g, look.cool);
+    if(look.fog && look.fog.amount > 0) drawFog(cv, g, look.fog);
 
     /* one pass for grade, grain and falloff */
     var img = g.getImageData(0, 0, W, H), p = img.data;
