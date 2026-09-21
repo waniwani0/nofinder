@@ -373,16 +373,24 @@
          yellow, the brightest areas turn cyan, and the corners bleed red. */
       sat:1.05, contrast:0.30, fade:0.110,
       gamma:[1.00,1.00,1.00], gain:[1.00,1.00,1.00], lift:[0,0,0],
-      split:{ r:[0.24,0.13,-0.16], g:[-0.07,-0.04,0.06], b:[-0.04,-0.06,0.02] },
-      grain:15, vignette:0.55, vigR:0.45,
-      halation:{ amount:0.60, threshold:0.58, tint:[1.00,0.72,0.45] },
-      leak:{ amount:0.30, tint:[255,55,70] } },
+      split:{ r:[0.24,0.08,-0.18], g:[-0.07,-0.02,0.07], b:[-0.04,-0.02,0.05] },
+      grain:15, vignette:0.55, vigR:0.62,
+      halation:{ amount:0.60, threshold:0.58, tint:[1.00,0.78,0.55] },
+      leak:{ amount:0.30, tint:[255,55,70] },
+      cool:{ amount:0.50, tint:[70,140,235], chance:0.8 } },
     { id:"mono", name:"モノクロ",
       sat:0.00, contrast:0.46, fade:0.040,
       gamma:[1.00,1.00,1.00], gain:[1.00,1.00,1.00], lift:[0.020,0.019,0.017],
       grain:21, vignette:0.34,
       halation:{ amount:0.22, threshold:0.76, tint:[1.00,1.00,1.00] } },
-    { id:"raw", name:"そのまま", raw:true }
+    { id:"raw", name:"ノーマル",
+      /* the quiet one: blacks lifted so they read as soft grey, colour pulled
+         back to pastel, a warm cream in the highlights. Barely any grain. */
+      sat:0.82, contrast:0.12, fade:0.180,
+      gamma:[1.00,1.00,1.00], gain:[1.00,1.00,1.00], lift:[0,0,0],
+      split:{ r:[-0.02,0.02,0.035], g:[0.00,0.01,0.020], b:[0.045,0.00,-0.015] },
+      grain:9, vignette:0.18, vigR:1,
+      halation:{ amount:0.30, threshold:0.70, tint:[1.00,0.88,0.75] } }
   ];
   var LONG_EDGE = 1600;   /* a compact film camera does not resolve more */
 
@@ -435,6 +443,35 @@
     g.restore();
   }
 
+  /* A patch of the roll that shifted the other way. Unlike the leak this does
+     not add light — it multiplies, so the area cools without blowing out. */
+  function drawCool(cv, g, cool){
+    if(Math.random() > (cool.chance || 1)) return;
+    var W = cv.width, H = cv.height;
+    var n = 1 + (Math.random() * 1.6 | 0);
+    g.save();
+    g.globalCompositeOperation = "multiply";
+    for(var i = 0; i < n; i++){
+      var a = cool.amount * (0.55 + Math.random() * 0.7);
+      var t = cool.tint;
+      var mix = function(k){
+        return "rgb(" +
+          Math.round(255 + (t[0] - 255) * a * k) + "," +
+          Math.round(255 + (t[1] - 255) * a * k) + "," +
+          Math.round(255 + (t[2] - 255) * a * k) + ")";
+      };
+      var x = Math.random() * W, y = Math.random() * H;   /* anywhere */
+      var rad = H * (0.30 + Math.random() * 0.45);
+      var grd = g.createRadialGradient(x, y, 0, x, y, rad);
+      grd.addColorStop(0,    mix(1));
+      grd.addColorStop(0.45, mix(0.55));
+      grd.addColorStop(1,    "rgb(255,255,255)");         /* multiply by white = nothing */
+      g.fillStyle = grd;
+      g.fillRect(0, 0, W, H);
+    }
+    g.restore();
+  }
+
   function develop(cv, g, look){
     if(!look || look.raw) return;
     var W = cv.width, H = cv.height;
@@ -469,6 +506,7 @@
     }
 
     if(look.leak && look.leak.amount > 0) drawLeak(cv, g, look.leak);
+    if(look.cool && look.cool.amount > 0) drawCool(cv, g, look.cool);
 
     /* one pass for grade, grain and falloff */
     var img = g.getImageData(0, 0, W, H), p = img.data;
@@ -718,7 +756,7 @@
       var name = err && err.name || "";
       showNotice(name === "NotFoundError" || name === "OverconstrainedError"
         ? "カメラが見つかりません。"
-        : "カメラが許可されていません。設定をやり直してください。");
+        : "カメラが許可されていません。<br>設定をやり直してください。");
       startDemo();
     });
   }
