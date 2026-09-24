@@ -49,6 +49,21 @@
   button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
   button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 
+  /* ============ landscape, whatever the phone is doing ============
+     The app is always laid out wide. Turn the phone upright and the whole
+     camera turns with it — the way a real one does when you shoot vertical. */
+  #rot{
+    position:fixed;top:50%;left:50%;
+    transform-origin:center;transform:translate(-50%,-50%);
+  }
+  /* the sensor stays upright while its housing turns */
+  html.rot .feed{transform:rotate(-90deg)}
+  /* insets belong to the physical screen, so they swap when the app turns */
+  html.rot .wrap{
+    padding-left:env(safe-area-inset-top,0px);
+    padding-right:env(safe-area-inset-bottom,0px);
+  }
+
   /* ============ the camera ============
      One photograph of the body, scaled to fit. Everything else is positioned
      as a percentage of it, so the parts stay on their painted places. */
@@ -114,19 +129,6 @@
   .ctl:active{border-color:var(--ink);}
   .ctl[aria-pressed="false"]{color:var(--ink-dim)}
   .ctl[aria-pressed="false"] b{text-decoration:line-through}
-
-  /* ============ rotate gate ============ */
-  .rotate{
-    position:fixed;inset:0;z-index:50;background:var(--ground);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
-    padding:24px;text-align:center;box-sizing:border-box;
-  }
-  .rotate svg{color:var(--brass);animation:tilt 2.8s ease-in-out infinite}
-  @keyframes tilt{0%,45%{transform:rotate(0)}70%,100%{transform:rotate(90deg)}}
-  .rotate p{margin:0;font-size:15px;line-height:1.9;letter-spacing:.06em}
-  .rotate p b{color:var(--brass)}
-  .rotate small{font-family:var(--mono);font-size:10px;letter-spacing:.24em;
-    color:var(--ink-dim);text-transform:uppercase}
 
   /* ============ sheets ============ */
   .sheet{
@@ -222,6 +224,7 @@
 </style>
 </head>
 <body>
+<div id="rot">
 <div class="wrap">
   <div class="stage" id="stage">
 
@@ -248,12 +251,6 @@
     </div>
 
   </div>
-</div>
-
-<div class="rotate" id="rotate" hidden>
-  <svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18.5h2"/></svg>
-  <p>カメラを<b>横</b>に構えてください</p>
-  <small>hold it sideways</small>
 </div>
 
 <div class="sheet" id="gallery" hidden>
@@ -302,6 +299,7 @@
 </div>
 
 <div id="toast" role="status"></div>
+</div>
 
 <script>
 (function(){
@@ -1062,22 +1060,24 @@
   (function(){
     var stage = $("#vStage"), track = $("#vTrack");
     var down = false, startX = 0, dx = 0;
+    /* when the app is turned, its own left-to-right runs down the screen */
+    function along(e){ return turned ? e.clientY : e.clientX; }
     stage.addEventListener("pointerdown", function(e){
       if(shots.length < 2 || sliding) return;
-      down = true; startX = e.clientX; dx = 0;
+      down = true; startX = along(e); dx = 0;
       track.style.transition = "none";
       try{ stage.setPointerCapture(e.pointerId); }catch(err){}
     });
     stage.addEventListener("pointermove", function(e){
       if(!down) return;
-      dx = e.clientX - startX;
+      dx = along(e) - startX;
       if((vIndex === 0 && dx > 0) || (vIndex === shots.length - 1 && dx < 0)) dx *= 0.28;
       track.style.transform = "translateX(calc(-100% + " + dx.toFixed(1) + "px))";
     });
     function release(){
       if(!down) return;
       down = false;
-      var w = stage.getBoundingClientRect().width || 1;
+      var w = stage.offsetWidth || 1;   /* layout width, not the rotated box */
       if(dx < -w * 0.16) step(1);
       else if(dx > w * 0.16) step(-1);
       else settle();
@@ -1176,13 +1176,22 @@
     }
   });
 
-  /* ---------- orientation ---------- */
-  var mq = window.matchMedia("(orientation: portrait)");
-  function orient(){ $("#rotate").hidden = !mq.matches; }
-  if(mq.addEventListener) mq.addEventListener("change", orient);
-  else if(mq.addListener) mq.addListener(orient);
-  window.addEventListener("resize", orient);
-  orient();
+  /* ---------- always wide ----------
+     Rather than telling the viewer to turn the phone, turn the app. Held
+     upright, the phone becomes a camera on its side, and the frame it takes
+     is a tall one. */
+  var turned = false;
+  function fit(){
+    var w = window.innerWidth, h = window.innerHeight, el = $("#rot");
+    turned = h > w;
+    document.documentElement.classList.toggle("rot", turned);
+    el.style.width  = (turned ? h : w) + "px";
+    el.style.height = (turned ? w : h) + "px";
+    el.style.transform = "translate(-50%,-50%)" + (turned ? " rotate(90deg)" : "");
+  }
+  window.addEventListener("resize", fit);
+  window.addEventListener("orientationchange", function(){ setTimeout(fit, 120); });
+  fit();
 
   /* ---------- boot ---------- */
   openDB().then(function(d){
