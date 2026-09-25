@@ -77,7 +77,7 @@
      as a percentage of it, so the parts stay on their painted places. */
   .wrap{
     height:100%;display:flex;align-items:center;justify-content:center;
-    padding-left:var(--sa-l);padding-right:var(--sa-r);
+    padding-left:max(12px,var(--sa-l));padding-right:max(12px,var(--sa-r));
     box-sizing:border-box;
   }
   .stage{
@@ -142,7 +142,7 @@
   .sheet{
     position:fixed;inset:0;z-index:40;background:var(--ground);
     display:flex;flex-direction:column;box-sizing:border-box;
-    padding:var(--sa-t) max(16px,var(--sa-r)) var(--sa-b) max(16px,var(--sa-l));
+    padding:var(--sa-t) max(26px,var(--sa-r)) var(--sa-b) max(26px,var(--sa-l));
   }
   .sheet-bar{
     flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:12px;
@@ -181,8 +181,8 @@
   .v-slide{
     flex:0 0 100%;height:100%;box-sizing:border-box;
     display:flex;align-items:center;justify-content:center;
-    padding:calc(46px + var(--sa-t)) max(12px,var(--sa-r))
-            calc(46px + var(--sa-b)) max(12px,var(--sa-l));
+    padding:calc(46px + var(--sa-t)) max(22px,var(--sa-r))
+            calc(46px + var(--sa-b)) max(22px,var(--sa-l));
   }
   .v-slide img{
     max-width:100%;max-height:100%;object-fit:contain;display:block;
@@ -191,7 +191,7 @@
   .v-bar{
     position:absolute;left:0;right:0;z-index:2;
     display:flex;align-items:center;justify-content:space-between;gap:12px;
-    padding:9px max(14px,var(--sa-r)) 9px max(14px,var(--sa-l));
+    padding:9px max(24px,var(--sa-r)) 9px max(24px,var(--sa-l));
     pointer-events:none;
   }
   .v-bar button{pointer-events:auto}
@@ -865,10 +865,18 @@
         src = video;
       }
       if(!w || !h) throw new Error("no frame");
+      /* Held upright, the sensor hands over a tall frame. This camera is a
+         landscape one, so take the wide band out of the middle rather than
+         saving something on its side. */
+      var sx = 0, sy = 0, sw = w, sh = h;
+      if(h > w){
+        sh = Math.min(h, Math.round(w * 3 / 4));
+        sy = Math.round((h - sh) / 2);
+      }
       var look = currentLook();
-      var k = Math.min(1, LONG_EDGE / Math.max(w, h));
-      canvas.width = Math.round(w * k); canvas.height = Math.round(h * k);
-      ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+      var k = Math.min(1, LONG_EDGE / Math.max(sw, sh));
+      canvas.width = Math.round(sw * k); canvas.height = Math.round(sh * k);
+      ctx.drawImage(src, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
       develop(canvas, ctx, look);
       var data = canvas.toDataURL("image/jpeg", 0.85);
       Store.add({ roll: state.roll, ts: Date.now(), data: data,
