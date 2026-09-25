@@ -143,7 +143,7 @@
   .sheet-bar h2{margin:0;font-size:14px;font-weight:500;letter-spacing:.08em}
   .sheet-bar .sub{font-family:var(--mono);font-size:10px;color:var(--ink-dim);
     letter-spacing:.18em;text-transform:uppercase}
-  .sheet-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-block:14px 26px}
+  .sheet-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-block:14px}
   .close{font-size:11.5px;letter-spacing:.12em;color:var(--ink-dim);
     border:1px solid var(--rule);border-radius:1px;padding:7px 13px}
   .bar-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
@@ -151,8 +151,11 @@
   #galDelete{color:var(--film);border-color:rgba(150,64,46,.5)}
   .close[disabled]{opacity:.3;cursor:default}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:5px}
-  .grid button{position:relative;aspect-ratio:1;overflow:hidden;background:#000;
+  .grid{
+    --tile:98px;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile),1fr));gap:5px;
+  }
+  .grid button{position:relative;height:var(--tile);overflow:hidden;background:#000;
     border:1px solid var(--rule)}
   .grid button.sel{border-color:var(--brass)}
   .grid button.sel img{opacity:.55}
@@ -923,6 +926,19 @@
   }
   var shots = [];
   var selecting = false;
+
+  /* A landscape phone leaves barely 300px of height here. Pick a tile size that
+     divides that into whole rows, so nothing is cut off at the fold. */
+  function sizeGrid(){
+    var body = $("#galBody"), grid = body.querySelector(".grid");
+    if(!grid) return;
+    var cs = getComputedStyle(body);
+    var room = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    if(room < 40) return;
+    var gap = 5;
+    var rows = Math.max(2, Math.round(room / 115));
+    grid.style.setProperty("--tile", ((room - (rows - 1) * gap) / rows).toFixed(1) + "px");
+  }
   var picked = {};
 
   var askAction = null;
@@ -993,6 +1009,7 @@
       }
       setSelecting(false);
       $("#gallery").hidden = false;
+      sizeGrid();
     });
   }
   /* ---------- the viewer: one frame filling the screen, swipe for the rest ----------
@@ -1182,15 +1199,21 @@
      is a tall one. */
   var turned = false;
   function fit(){
-    var w = window.innerWidth, h = window.innerHeight, el = $("#rot");
+    /* the visual viewport excludes the browser's own bars, which the layout
+       viewport does not — using it keeps the bottom row off the toolbar */
+    var vv = window.visualViewport;
+    var w = Math.round(vv ? vv.width : window.innerWidth);
+    var h = Math.round(vv ? vv.height : window.innerHeight);
+    var el = $("#rot");
     turned = h > w;
     document.documentElement.classList.toggle("rot", turned);
     el.style.width  = (turned ? h : w) + "px";
     el.style.height = (turned ? w : h) + "px";
     el.style.transform = "translate(-50%,-50%)" + (turned ? " rotate(90deg)" : "");
   }
-  window.addEventListener("resize", fit);
-  window.addEventListener("orientationchange", function(){ setTimeout(fit, 120); });
+  window.addEventListener("resize", function(){ fit(); sizeGrid(); });
+  if(window.visualViewport) window.visualViewport.addEventListener("resize", function(){ fit(); sizeGrid(); });
+  window.addEventListener("orientationchange", function(){ setTimeout(function(){ fit(); sizeGrid(); }, 120); });
   fit();
 
   /* ---------- boot ---------- */
